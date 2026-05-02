@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chrome | New Tab</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <img id="bg-image" src="" alt="Background" />
+    <canvas id="charging-canvas"></canvas>
+    <div class="overlay"></div>
+
+    <div class="weather-widget glass fade-in">
+      <div id="get-location" class="location-btn" title="Detect Location">
+        <i class="fas fa-location-crosshairs"></i>
+      </div>
+      <i class="fas fa-cloud-sun fa-2x"></i>
+      <div class="weather-info">
+        <div class="temp">24°C</div>
+        <div class="location">London, UK</div>
+      </div>
+    </div>
+
+    <div id="login-overlay" class="login-overlay glass">
+      <div class="login-box modal-content glass">
+        <h2>Welcome Back</h2>
+        <p>Please click login to access your dashboard</p>
+        <button id="login-btn" class="btn primary">Login</button>
+      </div>
+    </div>
+
+    <div id="main-content" class="container content-blur">
+      <div class="clock-container fade-in">
+        <div id="clock" class="clock">00:00</div>
+        <div id="date" class="date">Monday, January 1</div>
+      </div>
+
+      <div class="search-container">
+        <i class="fas fa-search search-icon"></i>
+        <form id="search-form" action="https://www.google.com/search" method="get">
+          <input
+            type="text"
+            name="q"
+            class="search-input"
+            placeholder="Search Google..."
+            autocomplete="off"
+            id="search-input"
+          />
+        </form>
+        <div class="engine-toggle-container">
+          <div id="engine-toggle" class="engine-toggle" title="Switch Search Engine">
+            <i class="fab fa-google"></i>
+          </div>
+          <div id="engine-dropdown" class="engine-dropdown"></div>
+        </div>
+        <div id="search-history" class="search-history-dropdown"></div>
+      </div>
+
+      <div class="shortcuts" id="shortcuts-container">
+        <!-- Shortcuts will be rendered here -->
+        <button class="shortcut add-shortcut-btn" id="add-shortcut-btn">
+          <div class="shortcut-icon"><i class="fas fa-plus"></i></div>
+          <span class="shortcut-name">Add</span>
+        </button>
+      </div>
+    </div>
+    
+    <!-- Shortcut Modal -->
+    <div id="shortcut-modal" class="modal">
+      <div class="modal-content glass">
+        <h3>Add Shortcut</h3>
+        <div class="input-group">
+          <label for="shortcut-name-input">Name</label>
+          <input type="text" id="shortcut-name-input" placeholder="e.g., Google" />
+        </div>
+        <div class="input-group">
+          <label for="shortcut-url-input">URL</label>
+          <input type="text" id="shortcut-url-input" placeholder="e.g., https://google.com" />
+        </div>
+        <div class="modal-actions">
+          <button id="cancel-shortcut" class="btn secondary">Cancel</button>
+          <button id="save-shortcut" class="btn primary">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Wallpaper Controls -->
+    <button id="edit-wallpaper-btn" class="edit-wallpaper-btn" title="Change Wallpaper">
+      <i class="fas fa-image"></i>
+    </button>
+    <input type="file" id="wallpaper-upload" accept="image/*, video/*" style="display: none;" />
+
+    <script src="script.js"></script>
+  </body>
+</html>

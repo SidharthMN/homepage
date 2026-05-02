@@ -1,0 +1,693 @@
+:root {
+  --bg-overlay: rgba(0, 0, 0, 0.4);
+  --glass-bg: rgba(255, 255, 255, 0.1);
+  --glass-border: rgba(255, 255, 255, 0.2);
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.8);
+  --accent: #ffffff;
+  --accent-gradient: linear-gradient(135deg, #ffffff 0%, #e0e0e0 100%);
+  --font-main:
+    "Outfit", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+    Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+  --blur: 20px;
+  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-main);
+  color: var(--text-primary);
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+  background-color: #000;
+}
+
+#bg-image {
+  position: fixed;
+  top: -5%;
+  left: -5%;
+  width: 110%;
+  height: 110%;
+  object-fit: cover;
+  z-index: -1;
+  transition: opacity 1s ease-in-out;
+  animation: bg-motion 30s linear infinite alternate;
+}
+
+@keyframes bg-motion {
+  0% { transform: scale(1) translate(0, 0); }
+  50% { transform: scale(1.1) translate(-2%, -2%); }
+  100% { transform: scale(1) translate(2%, 2%); }
+}
+
+#charging-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  background: black;
+  display: none;
+}
+
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--bg-overlay);
+  z-index: 0;
+}
+
+.container {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  opacity: 0;
+  transition: opacity 1s ease;
+}
+
+.container.content-visible {
+  opacity: 1;
+}
+
+.weather-widget {
+  z-index: 10;
+}
+
+/* Glassmorphism utility */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur));
+  -webkit-backdrop-filter: blur(var(--blur));
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+}
+
+/* Typography styles */
+.clock-container {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+h1,
+.clock {
+  font-weight: 700;
+  font-size: 6rem;
+  text-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  letter-spacing: -2px;
+}
+
+.date {
+  font-size: 1.5rem;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
+/* Components */
+.search-container {
+  width: 100%;
+  max-width: 600px;
+  position: relative;
+  margin-bottom: 3rem;
+  transform: translateY(20px);
+  opacity: 0;
+  animation: fadeInUp 0.8s forwards 0.2s;
+  z-index: 10;
+}
+
+.search-input {
+  width: 100%;
+  padding: 1.2rem 3.5rem 1.2rem 3.5rem; /* Left and right padding for icons */
+  font-size: 1.1rem;
+  border: none;
+  outline: none;
+  color: white;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur));
+  -webkit-backdrop-filter: blur(var(--blur));
+  border: 1px solid var(--glass-border);
+  border-radius: 50px;
+  transition: var(--transition);
+}
+
+.engine-toggle {
+  position: absolute;
+  right: 1.2rem;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition);
+  color: var(--text-secondary);
+}
+
+.engine-toggle:hover {
+  color: white;
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-50%) scale(1.1);
+}
+
+.engine-toggle-container {
+  position: absolute;
+  right: 1.2rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  z-index: 101;
+}
+
+.engine-toggle {
+  position: relative;
+  right: 0;
+  top: 0;
+  transform: none;
+}
+
+.engine-toggle:hover {
+  transform: scale(1.1);
+}
+
+.engine-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 10px;
+  background: #222;
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  width: 150px;
+}
+
+.engine-option {
+  padding: 10px 15px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.engine-option:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.search-input:focus {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: var(--accent);
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+}
+
+.search-history-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  width: 100%;
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 100;
+  display: none;
+  flex-direction: column;
+  padding: 0.5rem;
+  animation: fadeIn 0.3s ease;
+  background: #222;
+  border-radius: 12px;
+  border: 1px solid var(--glass-border);
+}
+
+.history-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.8rem 1.2rem;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.history-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.history-text {
+  flex: 1;
+  font-size: 0.95rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-right: 1rem;
+}
+
+.history-delete {
+  padding: 5px;
+  opacity: 1;
+  color: #ff4d4d;
+  transition: var(--transition);
+}
+
+.history-delete:hover {
+  transform: scale(1.1);
+}
+
+.search-icon {
+  position: absolute;
+  left: 1.2rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+
+.shortcuts {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  transform: translateY(20px);
+  opacity: 0;
+  animation: fadeInUp 0.8s forwards 0.4s;
+}
+
+.shortcut {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-decoration: none;
+  color: white;
+  transition: var(--transition);
+}
+
+.shortcut-link {
+  color: white;
+  text-decoration: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.shortcut-icon {
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+  border-radius: 15px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur));
+  -webkit-backdrop-filter: blur(var(--blur));
+  border: 1px solid var(--glass-border);
+  transition: var(--transition);
+}
+
+.shortcut:hover .shortcut-icon {
+  transform: translateY(-5px);
+  background: rgba(255, 255, 255, 0.2);
+  border-color: var(--accent);
+}
+
+.shortcut-name {
+  opacity: 0.8;
+}
+
+.shortcut {
+  position: relative;
+}
+
+.shortcut-delete {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 20px;
+  height: 20px;
+  background: rgba(255, 0, 0, 0.6);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6rem;
+  opacity: 0;
+  transition: var(--transition);
+  cursor: pointer;
+  z-index: 2;
+}
+
+.shortcut:hover .shortcut-delete {
+  opacity: 1;
+}
+
+.add-shortcut-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 0;
+}
+
+/* Modal Styles */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(10px);
+}
+
+.modal-content {
+  padding: 2.5rem;
+  width: 100%;
+  max-width: 450px;
+  text-align: center;
+}
+
+.modal-content h3 {
+  margin-bottom: 2rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.input-group {
+  margin-bottom: 1.5rem;
+  text-align: left;
+}
+
+.input-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.input-group input {
+  width: 100%;
+  padding: 0.8rem 1rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  color: white;
+  font-family: inherit;
+  outline: none;
+  transition: var(--transition);
+}
+
+.input-group input:focus {
+  border-color: var(--accent);
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.modal-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.btn {
+  flex: 1;
+  padding: 0.8rem;
+  border-radius: 10px;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.btn.primary {
+  background: var(--accent-gradient);
+  color: white;
+}
+
+.btn.secondary {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.1);
+}
+
+/* Animations */
+@keyframes fadeInUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.fade-in {
+  animation: fadeInUp 0.8s forwards;
+}
+
+/* Weather Widget */
+.weather-widget {
+  position: absolute;
+  top: 2rem;
+  right: 2rem;
+  padding: 1rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  color: white;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.weather-widget:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: scale(1.02);
+}
+
+.weather-widget i {
+  color: white; /* Explicitly set icons to white */
+}
+
+.location-btn {
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 50%;
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.location-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: scale(1.1);
+}
+
+/* Login Dashboard */
+.login-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.login-box {
+  width: 100%;
+  max-width: 400px;
+  animation: scaleIn 0.5s ease;
+}
+
+.login-box h2 {
+  margin-bottom: 0.5rem;
+  font-weight: 700;
+}
+
+.login-box p {
+  color: var(--text-secondary);
+  margin-bottom: 2rem;
+  font-size: 0.9rem;
+}
+
+.error-text {
+  color: #ff4d4d;
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+  min-height: 1.2rem;
+}
+
+#login-btn {
+  background: #000000;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+#login-btn:hover {
+  background: #1a1a1a;
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.content-blur {
+  filter: blur(20px);
+  pointer-events: none;
+  transition: filter 1s ease;
+}
+
+.content-visible {
+  filter: blur(0);
+  pointer-events: auto;
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.9); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.temp {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.location {
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+/* Wallpaper Button */
+.edit-wallpaper-btn {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 1000;
+  transition: var(--transition);
+}
+
+.edit-wallpaper-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.1);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .clock {
+    font-size: 4rem;
+  }
+  
+  .date {
+    font-size: 1.2rem;
+  }
+  
+  .search-container {
+    max-width: 90%;
+    margin-bottom: 2rem;
+  }
+  
+  .weather-widget {
+    top: 1rem;
+    right: 1rem;
+    padding: 0.8rem 1rem;
+    gap: 0.5rem;
+  }
+  
+  .weather-info {
+    font-size: 0.8rem;
+  }
+  
+  .temp {
+    font-size: 1.2rem;
+  }
+  
+  .shortcuts {
+    gap: 1rem;
+    padding: 0 1rem;
+  }
+  
+  .shortcut-icon {
+    width: 50px;
+    height: 50px;
+    font-size: 1.2rem;
+  }
+  
+  .shortcut-name {
+    font-size: 0.8rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .clock {
+    font-size: 3rem;
+  }
+
+  .modal {
+    align-items: flex-start;
+    padding-top: 2rem;
+  }
+  
+  .modal-content {
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+  
+  .search-input {
+    padding: 1rem 3rem 1rem 3rem;
+    font-size: 1rem;
+  }
+  
+  .login-box {
+    max-width: 90%;
+    padding: 1.5rem;
+  }
+  
+  .modal-content {
+    padding: 1.5rem;
+    max-width: 90%;
+  }
+  
+  .shortcuts {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    width: 100%;
+    max-width: 300px;
+  }
+}
