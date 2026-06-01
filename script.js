@@ -585,6 +585,68 @@ window.addEventListener("keydown", (e) => {
   }
 });
 
+// News Widget State & Logic
+let newsList = [
+  {"category": "Sports", "title": "India prepares for upcoming cricket series", "link": "#"},
+  {"category": "Sports", "title": "European football leagues wrap up summer plans", "link": "#"},
+  {"category": "World", "title": "Global climate summit outlines new milestones", "link": "#"}
+];
+let currentNewsIndex = 0;
+let newsIntervalId = null;
+
+function cycleNews() {
+  if (!newsList || newsList.length === 0) return;
+  const item = newsList[currentNewsIndex];
+  const titleEl = document.getElementById("news-title-link");
+  const categoryEl = document.querySelector(".news-category");
+  const iconEl = document.querySelector(".news-icon i");
+
+  const widget = document.querySelector(".news-widget");
+  if (widget) {
+    widget.style.opacity = "0.4";
+    
+    setTimeout(() => {
+      if (categoryEl) categoryEl.textContent = item.category;
+      if (titleEl) {
+        titleEl.textContent = item.title;
+        titleEl.href = item.link;
+      }
+      
+      if (iconEl) {
+        if (item.category === "Cricket") {
+          iconEl.className = "fas fa-baseball-bat-ball";
+        } else if (item.category === "Football") {
+          iconEl.className = "fas fa-soccer-ball";
+        } else {
+          iconEl.className = "fas fa-newspaper";
+        }
+      }
+      widget.style.opacity = "1";
+    }, 400);
+  }
+
+  currentNewsIndex = (currentNewsIndex + 1) % newsList.length;
+}
+
+async function fetchNews() {
+  try {
+    const response = await fetch(`${API_URL}/news/?t=${Date.now()}`);
+    if (response.ok) {
+      const data = await response.json();
+      if (data.news && data.news.length > 0) {
+        newsList = data.news;
+        currentNewsIndex = 0;
+      }
+    }
+  } catch (e) {
+    console.warn("Could not load fresh news from backend:", e.message);
+  }
+  
+  cycleNews();
+  if (newsIntervalId) clearInterval(newsIntervalId);
+  newsIntervalId = setInterval(cycleNews, 20000);
+}
+
 // Initialize
 checkLogin();
 updateClock();
@@ -592,6 +654,7 @@ setInterval(updateClock, 1000);
 renderShortcuts();
 updateSearchEngine();
 getWeather();
+fetchNews();
 window.addEventListener("resize", resizeCanvas);
 resizeCanvas();
 if ("getBattery" in navigator) {

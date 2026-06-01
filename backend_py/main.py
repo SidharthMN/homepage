@@ -1,6 +1,8 @@
 import os
 import uuid
 import shutil
+import urllib.request
+import xml.etree.ElementTree as ET
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from fastapi import FastAPI, File, UploadFile, HTTPException, Depends
@@ -148,6 +150,53 @@ async def upload_wallpaper(file: UploadFile = File(...)):
         conn.close()
         
     return {"message": "Wallpaper uploaded successfully", "id": inserted_id, "url": url_path}
+
+
+@app.get("/news/")
+async def get_news():
+    feeds = {
+        "Cricket": "https://www.skysports.com/rss/12040",
+        "Football": "https://www.skysports.com/rss/11095",
+        "World": "http://feeds.bbci.co.uk/news/rss.xml"
+    }
+    
+    news_items = []
+    
+    for category, url in feeds.items():
+        try:
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, timeout=3) as response:
+                xml_data = response.read()
+                root = ET.fromstring(xml_data)
+                
+                count = 0
+                for item in root.findall('.//item'):
+                    if count >= 3:
+                        break
+                    title = item.find('title')
+                    link = item.find('link')
+                    
+                    title_text = title.text if title is not None else ""
+                    link_text = link.text if link is not None else ""
+                    
+                    if title_text:
+                        news_items.append({
+                            "category": category,
+                            "title": title_text,
+                            "link": link_text
+                        })
+                        count += 1
+        except Exception as e:
+            print(f"Error fetching feed {category}: {e}")
+            
+    if not news_items:
+        news_items = [
+            {"category": "Sports", "title": "India prepares for upcoming cricket series", "link": "#"},
+            {"category": "Sports", "title": "European football leagues wrap up summer plans", "link": "#"},
+            {"category": "World", "title": "Global climate summit outlines new milestones", "link": "#"}
+        ]
+        
+    return {"news": news_items}
 
 
 @app.get("/wallpapers/")

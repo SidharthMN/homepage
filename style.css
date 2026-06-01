@@ -481,6 +481,66 @@ h1,
   animation: fadeInUp 0.8s forwards;
 }
 
+/* News Widget */
+.news-widget {
+  position: absolute;
+  top: 2rem;
+  left: 2rem;
+  padding: 1rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  color: white;
+  max-width: 320px;
+  height: 85px;
+  overflow: hidden;
+  transition: var(--transition);
+  z-index: 10;
+}
+
+.news-widget:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: scale(1.02);
+}
+
+.news-icon {
+  font-size: 1.5rem;
+  color: var(--text-primary);
+  flex-shrink: 0;
+}
+
+.news-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.news-category {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+.news-title {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: white;
+  text-decoration: none;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.3;
+}
+
+.news-title:hover {
+  text-decoration: underline;
+}
+
 /* Weather Widget */
 .weather-widget {
   position: absolute;
@@ -634,6 +694,14 @@ h1,
     margin-bottom: 2rem;
   }
   
+  .news-widget {
+    top: 1rem;
+    left: 1rem;
+    padding: 0.8rem 1rem;
+    max-width: 220px;
+    height: 75px;
+  }
+
   .weather-widget {
     top: 1rem;
     right: 1rem;
@@ -666,6 +734,10 @@ h1,
 }
 
 @media (max-width: 480px) {
+  .news-widget {
+    display: none !important;
+  }
+
   .clock {
     font-size: 3rem;
   }
