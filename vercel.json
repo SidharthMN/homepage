@@ -4,20 +4,40 @@
     {
       "src": "backend_py/main.py",
       "use": "@vercel/python"
+    },
+    {
+      "src": "index.html",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "script.js",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "style.css",
+      "use": "@vercel/static"
     }
   ],
-  "rewrites": [
+  "routes": [
     {
-      "source": "/wallpapers/",
-      "destination": "backend_py/main.py"
+      "src": "/wallpapers/",
+      "dest": "backend_py/main.py"
     },
     {
-      "source": "/upload-wallpaper/",
-      "destination": "backend_py/main.py"
+      "src": "/upload-wallpaper/",
+      "dest": "backend_py/main.py"
     },
     {
-      "source": "/uploads/(.*)",
-      "destination": "backend_py/main.py"
+      "src": "/uploads/(.*)",
+      "dest": "backend_py/main.py"
+    },
+    {
+      "src": "/",
+      "dest": "/index.html"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/$1"
     }
   ]
 }
