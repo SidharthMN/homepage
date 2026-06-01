@@ -524,6 +524,17 @@ weatherWidget.onclick = () => {
 
 loginBtn.addEventListener("click", handleLogin);
 
+document.getElementById("news-title-link").onclick = (e) => {
+  e.preventDefault();
+  const query = e.currentTarget.textContent;
+  if (query && query !== "Loading sports & important news...") {
+    saveSearch(query);
+    searchInput.value = query;
+    searchForm.submit();
+    searchInput.value = "";
+  }
+};
+
 engineToggle.onclick = (e) => {
   e.stopPropagation();
   engineDropdown.style.display = engineDropdown.style.display === "flex" ? "none" : "flex";
