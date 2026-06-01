@@ -7,6 +7,7 @@ const saveBtn = document.getElementById("save-shortcut");
 const nameInput = document.getElementById("shortcut-name-input");
 const urlInput = document.getElementById("shortcut-url-input");
 const bgImage = document.getElementById("bg-image");
+const bgVideo = document.getElementById("bg-video");
 const chargingCanvas = document.getElementById("charging-canvas");
 
 const loginOverlay = document.getElementById("login-overlay");
@@ -20,6 +21,8 @@ const searchInput = document.getElementById("search-input");
 const searchHistory = document.getElementById("search-history");
 const editWallpaperBtn = document.getElementById("edit-wallpaper-btn");
 const wallpaperUpload = document.getElementById("wallpaper-upload");
+
+const API_URL = "http://localhost:8000";
 
 // State
 let shortcuts = JSON.parse(localStorage.getItem("shortcuts")) || [
@@ -45,8 +48,40 @@ const WALLPAPER_VARIATIONS = [
 
 let currentVariation = WALLPAPER_VARIATIONS[0];
 let currentEngineIndex = parseInt(localStorage.getItem("searchEngineIndex")) || 0;
-let customWallpaper = localStorage.getItem("customWallpaper") || null;
 let historyData = JSON.parse(localStorage.getItem("searchHistory")) || [];
+let customWallpaperUrl = null;
+
+// IndexedDB Helper
+const DB_NAME = "WallpaperDB";
+const STORE_NAME = "wallpapers";
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, 1);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result);
+    request.onupgradeneeded = (e) => {
+      e.target.result.createObjectStore(STORE_NAME);
+    };
+  });
+}
+async function saveWallpaperDB(blob) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    tx.objectStore(STORE_NAME).put(blob, "custom_wallpaper");
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+async function getWallpaperDB() {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, "readonly");
+    const req = tx.objectStore(STORE_NAME).get("custom_wallpaper");
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
 let animationId;
 let particles = [];
 const ctx = chargingCanvas.getContext("2d");
@@ -76,20 +111,85 @@ function updateClock() {
   );
 }
 
-function fetchBackground() {
-  if (customWallpaper) {
-    bgImage.src = customWallpaper;
-    bgImage.onload = () => {
-      bgImage.style.opacity = "1";
-    };
-    return;
+async function fetchBackground() {
+  // 1. Try fetching from Supabase database via FastAPI backend (with cache buster)
+  try {
+    const response = await fetch(`${API_URL}/wallpapers/?t=${Date.now()}`);
+    if (response.ok) {
+      const data = await response.json();
+      if (data.wallpapers && data.wallpapers.length > 0) {
+        const latest = data.wallpapers[0];
+        const wallpaperUrl = latest.filepath.startsWith("http") || latest.filepath.startsWith("data:")
+          ? latest.filepath
+          : `${API_URL}${latest.filepath}`;
+
+        const isVideo = latest.content_type 
+          ? latest.content_type.startsWith("video/") 
+          : latest.filepath.match(/\.(mp4|webm|ogg|mov)$/i);
+
+        if (customWallpaperUrl) {
+          URL.revokeObjectURL(customWallpaperUrl);
+          customWallpaperUrl = null;
+        }
+
+        if (isVideo) {
+          bgImage.style.display = "none";
+          bgVideo.style.display = "block";
+          bgVideo.style.opacity = "1";
+          bgVideo.src = wallpaperUrl;
+          bgVideo.play().catch(e => console.warn("Video autoplay failed:", e));
+        } else {
+          bgVideo.style.display = "none";
+          bgVideo.pause();
+          bgVideo.src = "";
+          bgImage.style.display = "block";
+          bgImage.style.opacity = "1";
+          bgImage.src = wallpaperUrl;
+        }
+        return;
+      }
+    }
+  } catch (e) {
+    console.warn("Could not connect to backend database, falling back to local DB:", e.message);
   }
+
+  // 2. Fallback to local IndexedDB
+  try {
+    const blob = await getWallpaperDB();
+    if (blob) {
+      if (customWallpaperUrl) URL.revokeObjectURL(customWallpaperUrl);
+      customWallpaperUrl = URL.createObjectURL(blob);
+      
+      const isVideo = blob.type && blob.type.startsWith("video/");
+      
+      if (isVideo) {
+        bgImage.style.display = "none";
+        bgVideo.style.display = "block";
+        bgVideo.style.opacity = "1";
+        bgVideo.src = customWallpaperUrl;
+        bgVideo.play().catch(e => console.warn("Video autoplay failed:", e));
+      } else {
+        bgVideo.style.display = "none";
+        bgVideo.pause();
+        bgVideo.src = "";
+        bgImage.style.display = "block";
+        bgImage.style.opacity = "1";
+        bgImage.src = customWallpaperUrl;
+      }
+      return;
+    }
+  } catch (e) {
+    console.error("Failed to load wallpaper from local DB", e);
+  }
+
+  // 3. Fallback to random image
+  bgVideo.style.display = "none";
+  bgVideo.pause();
+  bgVideo.src = "";
+  bgImage.style.display = "block";
+  bgImage.style.opacity = "1";
   const randomSeed = Math.floor(Math.random() * 1000);
   bgImage.src = `https://picsum.photos/seed/${randomSeed}/1920/1080`;
-  
-  bgImage.onload = () => {
-    bgImage.style.opacity = "1";
-  };
 }
 
 function renderShortcuts() {
@@ -202,19 +302,10 @@ function animateWallpaper() {
 
 function handleBattery(battery) {
   const updateBatteryStatus = () => {
-    if (battery.charging) {
-      bgImage.style.display = "none";
-      chargingCanvas.style.display = "block";
-      // Pick a random variation when charging starts
-      currentVariation = WALLPAPER_VARIATIONS[Math.floor(Math.random() * WALLPAPER_VARIATIONS.length)];
-      initParticles();
-      if (!animationId) animateWallpaper();
-    } else {
-      bgImage.style.display = "block";
-      chargingCanvas.style.display = "none";
-      cancelAnimationFrame(animationId);
-      animationId = null;
-    }
+    chargingCanvas.style.display = "none";
+    cancelAnimationFrame(animationId);
+    animationId = null;
+    fetchBackground();
   };
   battery.addEventListener("chargingchange", updateBatteryStatus);
   updateBatteryStatus();
@@ -440,16 +531,33 @@ editWallpaperBtn.onclick = () => {
   wallpaperUpload.click();
 };
 
-wallpaperUpload.onchange = (e) => {
+wallpaperUpload.onchange = async (e) => {
   const file = e.target.files[0];
   if (file) {
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      customWallpaper = event.target.result;
-      localStorage.setItem("customWallpaper", customWallpaper);
+    try {
+      // 1. Cache locally first
+      await saveWallpaperDB(file);
+      
+      // 2. Upload to Supabase backend database
+      const formData = new FormData();
+      formData.append("file", file);
+      try {
+        const response = await fetch(`${API_URL}/upload-wallpaper/`, {
+          method: "POST",
+          body: formData
+        });
+        if (!response.ok) {
+          throw new Error(`Upload failed: ${response.statusText}`);
+        }
+      } catch (uploadErr) {
+        console.warn("Failed to upload wallpaper to backend database, saved locally:", uploadErr);
+      }
+      
+      // 3. Update background
       fetchBackground();
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.error("Failed to save wallpaper", err);
+    }
   }
 };
 
@@ -479,13 +587,16 @@ window.addEventListener("keydown", (e) => {
 checkLogin();
 updateClock();
 setInterval(updateClock, 1000);
-fetchBackground();
 renderShortcuts();
 updateSearchEngine();
 getWeather();
 window.addEventListener("resize", resizeCanvas);
 resizeCanvas();
-if ("getBattery" in navigator) { navigator.getBattery().then(handleBattery); }
+if ("getBattery" in navigator) {
+  navigator.getBattery().then(handleBattery);
+} else {
+  fetchBackground();
+}
 
 
 
