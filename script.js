@@ -22,7 +22,9 @@ const searchHistory = document.getElementById("search-history");
 const editWallpaperBtn = document.getElementById("edit-wallpaper-btn");
 const wallpaperUpload = document.getElementById("wallpaper-upload");
 
-const API_URL = "http://localhost:8000";
+const API_URL = window.location.origin && window.location.origin.startsWith("http")
+  ? window.location.origin
+  : "http://localhost:8000";
 
 // State
 let shortcuts = JSON.parse(localStorage.getItem("shortcuts")) || [

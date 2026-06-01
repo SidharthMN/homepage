@@ -32,8 +32,9 @@ DB_USER = os.getenv("DB_USER", "postgres")
 DB_PASSWORD = os.getenv("DB_PASSWORD", "root@123#$$")
 DB_PORT = os.getenv("DB_PORT", "5432")
 
-# Directory to save files
-UPLOAD_DIR = "uploads"
+# Directory to save files (use /tmp on Vercel due to read-only filesystem)
+IS_VERCEL = "VERCEL" in os.environ
+UPLOAD_DIR = "/tmp/uploads" if IS_VERCEL else "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # Mount the uploads directory to serve files statically

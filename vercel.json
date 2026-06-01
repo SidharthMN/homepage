@@ -1,0 +1,27 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "backend_py/main.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/wallpapers/",
+      "dest": "backend_py/main.py"
+    },
+    {
+      "src": "/upload-wallpaper/",
+      "dest": "backend_py/main.py"
+    },
+    {
+      "src": "/uploads/(.*)",
+      "dest": "backend_py/main.py"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/$1"
+    }
+  ]
+}
