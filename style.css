@@ -514,6 +514,8 @@ h1,
   flex-direction: column;
   justify-content: center;
   overflow: hidden;
+  flex: 1;
+  min-width: 0;
 }
 
 .news-category {
@@ -539,6 +541,41 @@ h1,
 
 .news-title:hover {
   text-decoration: underline;
+}
+
+.news-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-left: 10px;
+  opacity: 0;
+  transition: var(--transition);
+  flex-shrink: 0;
+}
+
+.news-widget:hover .news-controls {
+  opacity: 1;
+}
+
+.news-control-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  font-size: 0.7rem;
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  width: 20px;
+  height: 20px;
+}
+
+.news-control-btn:hover {
+  color: white;
+  background: rgba(255, 255, 255, 0.15);
 }
 
 /* Weather Widget */
