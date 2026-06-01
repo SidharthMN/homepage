@@ -6,22 +6,18 @@
       "use": "@vercel/python"
     }
   ],
-  "routes": [
+  "rewrites": [
     {
-      "src": "/wallpapers/",
-      "dest": "backend_py/main.py"
+      "source": "/wallpapers/",
+      "destination": "backend_py/main.py"
     },
     {
-      "src": "/upload-wallpaper/",
-      "dest": "backend_py/main.py"
+      "source": "/upload-wallpaper/",
+      "destination": "backend_py/main.py"
     },
     {
-      "src": "/uploads/(.*)",
-      "dest": "backend_py/main.py"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/$1"
+      "source": "/uploads/(.*)",
+      "destination": "backend_py/main.py"
     }
   ]
 }
