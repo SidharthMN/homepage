@@ -154,46 +154,96 @@ async def upload_wallpaper(file: UploadFile = File(...)):
 
 @app.get("/news/")
 async def get_news():
-    feeds = {
-        "Cricket": "https://www.skysports.com/rss/12040",
-        "Football": "https://www.skysports.com/rss/11095",
-        "World": "http://feeds.bbci.co.uk/news/rss.xml"
-    }
-    
+    news_api_key = os.getenv("NEWS_API_KEY")
     news_items = []
     
-    for category, url in feeds.items():
+    # Try NewsAPI if a valid key is provided
+    if news_api_key and news_api_key.strip() and news_api_key != "YOUR_API_KEY":
+        url = f"https://newsapi.org/v2/top-headlines?country=in&category=technology&apiKey={news_api_key}"
         try:
             req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req, timeout=3) as response:
+            with urllib.request.urlopen(req, timeout=5) as response:
+                import json
+                data = json.loads(response.read().decode())
+                if data.get("status") == "ok":
+                    articles = data.get("articles", [])
+                    count = 0
+                    for article in articles:
+                        if count >= 15:
+                            break
+                        title_text = article.get("title", "")
+                        link_text = article.get("url", "")
+                        pub_date_text = article.get("publishedAt", "")
+                        source_dict = article.get("source", {})
+                        source_name = source_dict.get("name", "NewsAPI") if source_dict else "NewsAPI"
+                        
+                        if title_text:
+                            title_parts = title_text.rsplit(' - ', 1)
+                            if len(title_parts) > 1:
+                                clean_title = title_parts[0]
+                            else:
+                                clean_title = title_text
+                                
+                            news_items.append({
+                                "title": clean_title,
+                                "source": source_name,
+                                "link": link_text,
+                                "pub_date": pub_date_text
+                            })
+                            count += 1
+        except Exception as e:
+            print(f"Error fetching NewsAPI, falling back to Google News: {e}")
+            
+    # Fallback to Google News RSS
+    if not news_items:
+        url = "https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en"
+        try:
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, timeout=5) as response:
                 xml_data = response.read()
                 root = ET.fromstring(xml_data)
                 
                 count = 0
                 for item in root.findall('.//item'):
-                    if count >= 3:
+                    if count >= 15:
                         break
                     title = item.find('title')
                     link = item.find('link')
+                    pub_date = item.find('pubDate')
+                    source = item.find('source')
                     
                     title_text = title.text if title is not None else ""
                     link_text = link.text if link is not None else ""
+                    pub_date_text = pub_date.text if pub_date is not None else ""
+                    source_text = source.text if source is not None else ""
                     
                     if title_text:
+                        title_parts = title_text.rsplit(' - ', 1)
+                        if len(title_parts) > 1:
+                            clean_title = title_parts[0]
+                            source_name = title_parts[1]
+                        else:
+                            clean_title = title_text
+                            source_name = source_text if source_text else "Google News"
+                            
                         news_items.append({
-                            "category": category,
-                            "title": title_text,
-                            "link": link_text
+                            "title": clean_title,
+                            "source": source_name,
+                            "link": link_text,
+                            "pub_date": pub_date_text
                         })
                         count += 1
         except Exception as e:
-            print(f"Error fetching feed {category}: {e}")
+            print(f"Error fetching Google News: {e}")
             
     if not news_items:
         news_items = [
-            {"category": "Sports", "title": "India prepares for upcoming cricket series", "link": "#"},
-            {"category": "Sports", "title": "European football leagues wrap up summer plans", "link": "#"},
-            {"category": "World", "title": "Global climate summit outlines new milestones", "link": "#"}
+            {
+                "title": "News is temporarily unavailable. Check back later.",
+                "source": "News Hub",
+                "link": "https://news.google.com",
+                "pub_date": ""
+            }
         ]
         
     return {"news": news_items}
