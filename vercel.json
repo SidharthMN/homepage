@@ -24,6 +24,10 @@
       "dest": "backend_py/main.py"
     },
     {
+      "src": "/news/",
+      "dest": "backend_py/main.py"
+    },
+    {
       "src": "/upload-wallpaper/",
       "dest": "backend_py/main.py"
     },

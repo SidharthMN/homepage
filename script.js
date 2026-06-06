@@ -26,6 +26,9 @@ const API_URL = window.location.origin && window.location.origin.startsWith("htt
   ? window.location.origin
   : "http://localhost:8000";
 
+const IS_SERVERLESS = window.location.hostname.endsWith("github.io") || window.location.protocol === "file:";
+const NEWS_API_KEY = "2839ee89fc5c46eba93a331b89440397";
+
 // State
 let shortcuts = JSON.parse(localStorage.getItem("shortcuts")) || [
   { name: "Google", url: "https://www.google.com", icon: "fab fa-google" },
@@ -115,44 +118,46 @@ function updateClock() {
 
 async function fetchBackground() {
   // 1. Try fetching from Supabase database via FastAPI backend (with cache buster)
-  try {
-    const response = await fetch(`${API_URL}/wallpapers/?t=${Date.now()}`);
-    if (response.ok) {
-      const data = await response.json();
-      if (data.wallpapers && data.wallpapers.length > 0) {
-        const latest = data.wallpapers[0];
-        const wallpaperUrl = latest.filepath.startsWith("http") || latest.filepath.startsWith("data:")
-          ? latest.filepath
-          : `${API_URL}${latest.filepath}`;
+  if (!IS_SERVERLESS) {
+    try {
+      const response = await fetch(`${API_URL}/wallpapers/?t=${Date.now()}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.wallpapers && data.wallpapers.length > 0) {
+          const latest = data.wallpapers[0];
+          const wallpaperUrl = latest.filepath.startsWith("http") || latest.filepath.startsWith("data:")
+            ? latest.filepath
+            : `${API_URL}${latest.filepath}`;
 
-        const isVideo = latest.content_type 
-          ? latest.content_type.startsWith("video/") 
-          : latest.filepath.match(/\.(mp4|webm|ogg|mov)$/i);
+          const isVideo = latest.content_type 
+            ? latest.content_type.startsWith("video/") 
+            : latest.filepath.match(/\.(mp4|webm|ogg|mov)$/i);
 
-        if (customWallpaperUrl) {
-          URL.revokeObjectURL(customWallpaperUrl);
-          customWallpaperUrl = null;
+          if (customWallpaperUrl) {
+            URL.revokeObjectURL(customWallpaperUrl);
+            customWallpaperUrl = null;
+          }
+
+          if (isVideo) {
+            bgImage.style.display = "none";
+            bgVideo.style.display = "block";
+            bgVideo.style.opacity = "1";
+            bgVideo.src = wallpaperUrl;
+            bgVideo.play().catch(e => console.warn("Video autoplay failed:", e));
+          } else {
+            bgVideo.style.display = "none";
+            bgVideo.pause();
+            bgVideo.src = "";
+            bgImage.style.display = "block";
+            bgImage.style.opacity = "1";
+            bgImage.src = wallpaperUrl;
+          }
+          return;
         }
-
-        if (isVideo) {
-          bgImage.style.display = "none";
-          bgVideo.style.display = "block";
-          bgVideo.style.opacity = "1";
-          bgVideo.src = wallpaperUrl;
-          bgVideo.play().catch(e => console.warn("Video autoplay failed:", e));
-        } else {
-          bgVideo.style.display = "none";
-          bgVideo.pause();
-          bgVideo.src = "";
-          bgImage.style.display = "block";
-          bgImage.style.opacity = "1";
-          bgImage.src = wallpaperUrl;
-        }
-        return;
       }
+    } catch (e) {
+      console.warn("Could not connect to backend database, falling back to local DB:", e.message);
     }
-  } catch (e) {
-    console.warn("Could not connect to backend database, falling back to local DB:", e.message);
   }
 
   // 2. Fallback to local IndexedDB
@@ -551,19 +556,21 @@ wallpaperUpload.onchange = async (e) => {
       // 1. Cache locally first
       await saveWallpaperDB(file);
       
-      // 2. Upload to Supabase backend database
-      const formData = new FormData();
-      formData.append("file", file);
-      try {
-        const response = await fetch(`${API_URL}/upload-wallpaper/`, {
-          method: "POST",
-          body: formData
-        });
-        if (!response.ok) {
-          throw new Error(`Upload failed: ${response.statusText}`);
+      // 2. Upload to Supabase backend database if not serverless
+      if (!IS_SERVERLESS) {
+        const formData = new FormData();
+        formData.append("file", file);
+        try {
+          const response = await fetch(`${API_URL}/upload-wallpaper/`, {
+            method: "POST",
+            body: formData
+          });
+          if (!response.ok) {
+            throw new Error(`Upload failed: ${response.statusText}`);
+          }
+        } catch (uploadErr) {
+          console.warn("Failed to upload wallpaper to backend database, saved locally:", uploadErr);
         }
-      } catch (uploadErr) {
-        console.warn("Failed to upload wallpaper to backend database, saved locally:", uploadErr);
       }
       
       // 3. Update background
@@ -596,11 +603,65 @@ window.addEventListener("keydown", (e) => {
   }
 });
 
+// Theme Toggle Logic
+const themeToggleBtn = document.getElementById("theme-toggle-btn");
+
+function initTheme() {
+  const savedTheme = localStorage.getItem("theme");
+  if (savedTheme === "light") {
+    document.body.classList.add("light-mode");
+    if (themeToggleBtn) {
+      themeToggleBtn.innerHTML = '<i class="fas fa-sun"></i>';
+    }
+  } else {
+    document.body.classList.remove("light-mode");
+    if (themeToggleBtn) {
+      themeToggleBtn.innerHTML = '<i class="fas fa-moon"></i>';
+    }
+  }
+}
+
+if (themeToggleBtn) {
+  themeToggleBtn.addEventListener("click", () => {
+    document.body.classList.toggle("light-mode");
+    const isLight = document.body.classList.contains("light-mode");
+    localStorage.setItem("theme", isLight ? "light" : "dark");
+    themeToggleBtn.innerHTML = isLight ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+  });
+}
+
+// Helper to calculate relative time
+function getRelativeTime(dateStr) {
+  if (!dateStr) return "Just now";
+  try {
+    const pubDate = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now - pubDate;
+    
+    if (diffMs < 0) return "Just now";
+    
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays}d ago`;
+  } catch (e) {
+    return "Recently";
+  }
+}
+
 // News Widget State & Logic
 let newsList = [
-  {"category": "Sports", "title": "India prepares for upcoming cricket series", "link": "#"},
-  {"category": "Sports", "title": "European football leagues wrap up summer plans", "link": "#"},
-  {"category": "World", "title": "Global climate summit outlines new milestones", "link": "#"}
+  {
+    "title": "Loading real-time NewsAPI...",
+    "source": "NewsAPI",
+    "link": "#",
+    "pub_date": ""
+  }
 ];
 let currentNewsIndex = 0;
 let newsIntervalId = null;
@@ -609,28 +670,23 @@ function displayNews(index) {
   if (!newsList || newsList.length === 0) return;
   const item = newsList[index];
   const titleEl = document.getElementById("news-title-link");
-  const categoryEl = document.querySelector(".news-category");
-  const iconEl = document.querySelector(".news-icon i");
-
+  const sourceEl = document.getElementById("news-source");
+  const timeEl = document.getElementById("news-time");
   const widget = document.querySelector(".news-widget");
+  
   if (widget) {
     widget.style.opacity = "0.4";
     
     setTimeout(() => {
-      if (categoryEl) categoryEl.textContent = item.category;
       if (titleEl) {
         titleEl.textContent = item.title;
         titleEl.href = item.link;
       }
-      
-      if (iconEl) {
-        if (item.category === "Cricket") {
-          iconEl.className = "fas fa-baseball-bat-ball";
-        } else if (item.category === "Football") {
-          iconEl.className = "fas fa-soccer-ball";
-        } else {
-          iconEl.className = "fas fa-newspaper";
-        }
+      if (sourceEl) {
+        sourceEl.textContent = item.source || "Google News";
+      }
+      if (timeEl) {
+        timeEl.textContent = getRelativeTime(item.pub_date);
       }
       widget.style.opacity = "1";
     }, 400);
@@ -648,17 +704,148 @@ function resetNewsTimer() {
 }
 
 async function fetchNews() {
-  try {
-    const response = await fetch(`${API_URL}/news/?t=${Date.now()}`);
-    if (response.ok) {
-      const data = await response.json();
-      if (data.news && data.news.length > 0) {
-        newsList = data.news;
-        currentNewsIndex = 0;
+  let fetchedNews = null;
+  let activeSource = "Google News Tech";
+  
+  // 1. Try backend first if not serverless
+  if (!IS_SERVERLESS) {
+    try {
+      const response = await fetch(`${API_URL}/news/?t=${Date.now()}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.news && data.news.length > 0) {
+          fetchedNews = data.news;
+          // If it was backend, check if it used NewsAPI
+          const firstItem = fetchedNews[0];
+          if (firstItem && firstItem.source === "NewsAPI") {
+            activeSource = "NewsAPI Tech";
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Could not load fresh news from backend, falling back to client-side fetch:", e.message);
+    }
+  }
+  
+  // 2. Client-side fetch fallback
+  if (!fetchedNews) {
+    const isLocalhost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+    
+    // A. Try NewsAPI directly on localhost if key is configured
+    if (isLocalhost && NEWS_API_KEY && NEWS_API_KEY !== "YOUR_API_KEY") {
+      try {
+        const response = await fetch(`https://newsapi.org/v2/top-headlines?country=in&category=technology&apiKey=${NEWS_API_KEY}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.status === "ok" && data.articles && data.articles.length > 0) {
+            fetchedNews = data.articles.slice(0, 15).map(article => {
+              const titleText = article.title || "";
+              let cleanTitle = titleText;
+              const lastDash = titleText.lastIndexOf(" - ");
+              if (lastDash !== -1) {
+                cleanTitle = titleText.substring(0, lastDash);
+              }
+              return {
+                title: cleanTitle,
+                source: article.source?.name || "NewsAPI",
+                link: article.url || "#",
+                pub_date: article.publishedAt || ""
+              };
+            });
+            activeSource = "NewsAPI Tech";
+          }
+        }
+      } catch (e) {
+        console.warn("Client-side NewsAPI fetch failed, trying Google News RSS...", e.message);
       }
     }
-  } catch (e) {
-    console.warn("Could not load fresh news from backend:", e.message);
+    
+    // B. Fetch Google News RSS via CORS Proxy
+    if (!fetchedNews) {
+      const rssUrl = "https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en";
+      try {
+        let xmlText = "";
+        
+        // Try corsproxy.io first
+        try {
+          const proxyResponse = await fetch(`https://corsproxy.io/?${encodeURIComponent(rssUrl)}`);
+          if (proxyResponse.ok) {
+            xmlText = await proxyResponse.text();
+          } else {
+            throw new Error(`corsproxy.io returned status: ${proxyResponse.status}`);
+          }
+        } catch (proxy1Err) {
+          console.warn("corsproxy.io failed, trying allorigins...", proxy1Err.message);
+          // Try allorigins second
+          const proxyResponse = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(rssUrl)}`);
+          if (proxyResponse.ok) {
+            const data = await proxyResponse.json();
+            xmlText = data.contents;
+          } else {
+            throw new Error(`allorigins returned status: ${proxyResponse.status}`);
+          }
+        }
+        
+        if (xmlText) {
+          const parser = new DOMParser();
+          const xmlDoc = parser.parseFromString(xmlText, "text/xml");
+          const items = xmlDoc.querySelectorAll("item");
+          if (items && items.length > 0) {
+            fetchedNews = [];
+            items.forEach((item, index) => {
+              if (index >= 15) return;
+              const titleText = item.querySelector("title")?.textContent || "";
+              const linkText = item.querySelector("link")?.textContent || "";
+              const pubDateText = item.querySelector("pubDate")?.textContent || "";
+              const sourceText = item.querySelector("source")?.textContent || "";
+              
+              let cleanTitle = titleText;
+              let sourceName = sourceText || "Google News";
+              
+              const lastDash = titleText.lastIndexOf(" - ");
+              if (lastDash !== -1) {
+                cleanTitle = titleText.substring(0, lastDash);
+                sourceName = titleText.substring(lastDash + 3);
+              }
+              
+              fetchedNews.push({
+                title: cleanTitle,
+                source: sourceName,
+                link: linkText,
+                pub_date: pubDateText
+              });
+            });
+            activeSource = "Google News Tech";
+          }
+        }
+      } catch (rssErr) {
+        console.error("All news fetch methods failed:", rssErr);
+      }
+    }
+  }
+  
+  // Update newsList if we fetched anything successfully
+  if (fetchedNews && fetchedNews.length > 0) {
+    newsList = fetchedNews;
+    currentNewsIndex = 0;
+  } else {
+    // Fallback to offline message
+    newsList = [
+      {
+        title: "News is temporarily unavailable. Check back later.",
+        source: "News Hub",
+        link: "https://news.google.com",
+        pub_date: ""
+      }
+    ];
+    currentNewsIndex = 0;
+    activeSource = "Google News";
+  }
+  
+  // Update the widget brand header text
+  const brandTextEl = document.querySelector(".news-brand-text");
+  if (brandTextEl) {
+    brandTextEl.textContent = activeSource;
   }
   
   cycleNews();
@@ -683,6 +870,7 @@ async function fetchNews() {
 
 // Initialize
 checkLogin();
+initTheme();
 updateClock();
 setInterval(updateClock, 1000);
 renderShortcuts();
