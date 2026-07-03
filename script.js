@@ -18,9 +18,17 @@ const engineToggle = document.getElementById("engine-toggle");
 const engineDropdown = document.getElementById("engine-dropdown");
 const searchForm = document.getElementById("search-form");
 const searchInput = document.getElementById("search-input");
+const searchInputPrediction = document.getElementById("search-input-prediction");
 const searchHistory = document.getElementById("search-history");
 const editWallpaperBtn = document.getElementById("edit-wallpaper-btn");
 const wallpaperUpload = document.getElementById("wallpaper-upload");
+
+const historyToggleBtn = document.getElementById("history-toggle-btn");
+const historyModal = document.getElementById("history-modal");
+const historySearchInput = document.getElementById("history-search-input");
+const historyModalList = document.getElementById("history-modal-list");
+const clearAllHistoryBtn = document.getElementById("clear-all-history");
+const closeHistoryModalBtn = document.getElementById("close-history-modal");
 
 const API_URL = window.location.origin && window.location.origin.startsWith("http")
   ? window.location.origin
@@ -465,54 +473,295 @@ function updateSearchEngine() {
   });
 }
 
+const TRENDING_SEARCHES = [
+  "ChatGPT 5",
+  "Google Gemini Advanced",
+  "Tailwind CSS v4.0",
+  "Next.js 15 features",
+  "Web development roadmap 2026",
+  "React Server Components"
+];
+
+function debounce(func, wait) {
+  let timeout;
+  return function(...args) {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func.apply(this, args), wait);
+  };
+}
+
+function getTrendingSearches() {
+  const trending = [...TRENDING_SEARCHES];
+  if (typeof newsList !== 'undefined' && newsList && newsList.length > 0) {
+    newsList.slice(0, 3).forEach(news => {
+      if (news.title && news.title !== "Loading real-time NewsAPI..." && !news.title.includes("temporarily unavailable")) {
+        let words = news.title.split(" ").slice(0, 5).join(" ");
+        if (words && !trending.includes(words)) {
+          trending.unshift(words);
+        }
+      }
+    });
+  }
+  return trending.slice(0, 6);
+}
+
+async function fetchSuggestions(query) {
+  if (!query) return [];
+  
+  if (!IS_SERVERLESS) {
+    try {
+      const response = await fetch(`${API_URL}/suggestions/?q=${encodeURIComponent(query)}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.suggestions) return data.suggestions;
+      }
+    } catch (e) {
+      console.warn("Backend suggestions failed, trying direct Google Complete search:", e.message);
+    }
+  }
+  
+  try {
+    const response = await fetch(`https://suggestqueries.google.com/complete/search?client=firefox&q=${encodeURIComponent(query)}`);
+    if (response.ok) {
+      const data = await response.json();
+      if (data && data[1]) return data[1];
+    }
+  } catch (e) {
+    console.error("Direct fetch suggestions failed:", e);
+  }
+  
+  const queryLower = query.toLowerCase();
+  const historyMatches = historyData.filter(h => h.toLowerCase().includes(queryLower));
+  const trendingMatches = getTrendingSearches().filter(t => t.toLowerCase().includes(queryLower));
+  return [...new Set([...historyMatches, ...trendingMatches])].slice(0, 8);
+}
+
+function clearPrediction() {
+  if (searchInputPrediction) {
+    searchInputPrediction.value = "";
+  }
+}
+
+function updatePrediction(query, topSuggestion) {
+  if (!searchInputPrediction || !query || !topSuggestion) {
+    clearPrediction();
+    return;
+  }
+  if (topSuggestion.toLowerCase().startsWith(query.toLowerCase())) {
+    const suffix = topSuggestion.substring(query.length);
+    searchInputPrediction.value = query + suffix;
+  } else {
+    clearPrediction();
+  }
+}
+
+function renderDefaultDropdown() {
+  searchHistory.innerHTML = "";
+  
+  // Section 1: Trending
+  const trendingContainer = document.createElement("div");
+  trendingContainer.className = "dropdown-section";
+  
+  const trendingTitle = document.createElement("div");
+  trendingTitle.className = "dropdown-section-title";
+  trendingTitle.innerHTML = '<i class="fas fa-fire"></i> Trending Searches';
+  trendingContainer.appendChild(trendingTitle);
+  
+  const trendingList = getTrendingSearches();
+  trendingList.forEach(query => {
+    const item = document.createElement("div");
+    item.className = "search-dropdown-item";
+    item.innerHTML = `
+      <div class="search-dropdown-item-left">
+        <div class="search-dropdown-item-icon"><i class="fas fa-fire"></i></div>
+        <span class="search-dropdown-item-text">${query}</span>
+      </div>
+    `;
+    item.onclick = (e) => {
+      e.stopPropagation();
+      searchInput.value = query;
+      searchForm.submit();
+      searchInput.value = "";
+      searchHistory.style.display = "none";
+      clearPrediction();
+    };
+    trendingContainer.appendChild(item);
+  });
+  
+  searchHistory.appendChild(trendingContainer);
+  
+  // Section 2: Recent Searches
+  if (historyData.length > 0) {
+    const recentContainer = document.createElement("div");
+    recentContainer.className = "dropdown-section";
+    
+    const recentTitle = document.createElement("div");
+    recentTitle.className = "dropdown-section-title";
+    recentTitle.innerHTML = '<i class="fas fa-history"></i> Recent Searches';
+    recentContainer.appendChild(recentTitle);
+    
+    historyData.forEach((query, index) => {
+      const item = document.createElement("div");
+      item.className = "search-dropdown-item";
+      item.innerHTML = `
+        <div class="search-dropdown-item-left">
+          <div class="search-dropdown-item-icon"><i class="fas fa-clock"></i></div>
+          <span class="search-dropdown-item-text">${query}</span>
+        </div>
+        <div class="search-dropdown-item-delete" title="Delete from history"><i class="fas fa-times"></i></div>
+      `;
+      
+      item.onclick = (e) => {
+        if (e.target.closest(".search-dropdown-item-delete")) return;
+        e.stopPropagation();
+        searchInput.value = query;
+        searchForm.submit();
+        searchInput.value = "";
+        searchHistory.style.display = "none";
+        clearPrediction();
+      };
+      
+      item.querySelector(".search-dropdown-item-delete").onclick = (e) => {
+        e.stopPropagation();
+        deleteHistoryItem(index);
+        renderDefaultDropdown();
+      };
+      
+      recentContainer.appendChild(item);
+    });
+    
+    searchHistory.appendChild(recentContainer);
+  }
+}
+
+function renderSuggestions(suggestions) {
+  searchHistory.innerHTML = "";
+  
+  if (!suggestions || suggestions.length === 0) {
+    const engine = engines[currentEngineIndex];
+    const query = searchInput.value.trim();
+    if (query) {
+      const item = document.createElement("div");
+      item.className = "search-dropdown-item";
+      item.innerHTML = `
+        <div class="search-dropdown-item-left">
+          <div class="search-dropdown-item-icon"><i class="fas fa-magnifying-glass"></i></div>
+          <span class="search-dropdown-item-text">Search ${engine.name} for "${query}"</span>
+        </div>
+      `;
+      item.onclick = (e) => {
+        e.stopPropagation();
+        searchForm.submit();
+        searchInput.value = "";
+        searchHistory.style.display = "none";
+        clearPrediction();
+      };
+      searchHistory.appendChild(item);
+    }
+    return;
+  }
+  
+  suggestions.forEach(query => {
+    const item = document.createElement("div");
+    item.className = "search-dropdown-item";
+    item.innerHTML = `
+      <div class="search-dropdown-item-left">
+        <div class="search-dropdown-item-icon"><i class="fas fa-magnifying-glass"></i></div>
+        <span class="search-dropdown-item-text">${query}</span>
+      </div>
+    `;
+    item.onclick = (e) => {
+      e.stopPropagation();
+      searchInput.value = query;
+      searchForm.submit();
+      searchInput.value = "";
+      searchHistory.style.display = "none";
+      clearPrediction();
+    };
+    searchHistory.appendChild(item);
+  });
+}
+
 function saveSearch(query) {
   if (!query) return;
   historyData = historyData.filter((q) => q !== query);
   historyData.unshift(query);
   historyData = historyData.slice(0, 10);
   localStorage.setItem("searchHistory", JSON.stringify(historyData));
-  renderHistory();
-}
-
-function renderHistory() {
-  if (historyData.length === 0) {
-    searchHistory.innerHTML = '<div class="history-item" style="cursor: default; opacity: 0.6;">No history yet</div>';
-    return;
-  }
-  searchHistory.innerHTML = "";
-  historyData.forEach((query, index) => {
-    const item = document.createElement("div");
-    item.className = "history-item";
-    item.innerHTML = `
-      <span class="history-text">${query}</span>
-      <div class="history-delete" data-index="${index}"><i class="fas fa-times"></i></div>
-    `;
-    item.onclick = (e) => {
-      if (e.target.closest(".history-delete")) return;
-      searchInput.value = query;
-      searchForm.submit();
-      searchInput.value = "";
-      searchHistory.style.display = "none";
-    };
-    item.querySelector(".history-delete").onclick = (e) => {
-      e.stopPropagation();
-      deleteHistoryItem(index);
-    };
-    searchHistory.appendChild(item);
-  });
 }
 
 function deleteHistoryItem(index) {
   historyData.splice(index, 1);
   localStorage.setItem("searchHistory", JSON.stringify(historyData));
-  renderHistory();
+}
+
+// History Modal Functions
+function openHistoryModal() {
+  if (historyModal) {
+    historyModal.style.display = "flex";
+    if (historySearchInput) {
+      historySearchInput.value = "";
+      historySearchInput.focus();
+    }
+    renderHistoryModalList();
+  }
+}
+
+function closeHistoryModal() {
+  if (historyModal) {
+    historyModal.style.display = "none";
+  }
+}
+
+function renderHistoryModalList(filter = "") {
+  if (!historyModalList) return;
+  historyModalList.innerHTML = "";
+  const filteredHistory = historyData.filter(q => q.toLowerCase().includes(filter.toLowerCase()));
+  
+  if (filteredHistory.length === 0) {
+    historyModalList.innerHTML = `<div class="history-modal-empty">${filter ? 'No matching queries found' : 'No search history yet'}</div>`;
+    return;
+  }
+  
+  filteredHistory.forEach(query => {
+    const indexInMain = historyData.indexOf(query);
+    const item = document.createElement("div");
+    item.className = "history-modal-item";
+    item.innerHTML = `
+      <div class="history-modal-item-left">
+        <div class="search-dropdown-item-icon"><i class="fas fa-clock"></i></div>
+        <span class="history-modal-item-text">${query}</span>
+      </div>
+      <div class="history-modal-item-delete" title="Delete query"><i class="fas fa-times"></i></div>
+    `;
+    
+    item.onclick = (e) => {
+      if (e.target.closest(".history-modal-item-delete")) return;
+      searchInput.value = query;
+      searchForm.submit();
+      searchInput.value = "";
+      closeHistoryModal();
+    };
+    
+    item.querySelector(".history-modal-item-delete").onclick = (e) => {
+      e.stopPropagation();
+      deleteHistoryItem(indexInMain);
+      renderHistoryModalList(historySearchInput.value.trim());
+      renderDefaultDropdown();
+    };
+    
+    historyModalList.appendChild(item);
+  });
 }
 
 // Event Listeners
 addShortcutBtn.onclick = () => { modal.style.display = "flex"; nameInput.focus(); };
 cancelBtn.onclick = closeModal;
 saveBtn.onclick = addShortcut;
-window.onclick = (e) => { if (e.target === modal) closeModal(); };
+window.onclick = (e) => { 
+  if (e.target === modal) closeModal(); 
+  if (e.target === historyModal) closeHistoryModal();
+};
 document.getElementById("get-location").onclick = (e) => { 
   e.stopPropagation(); 
   getWeather(true); 
@@ -537,6 +786,7 @@ document.getElementById("news-title-link").onclick = (e) => {
     searchInput.value = query;
     searchForm.submit();
     searchInput.value = "";
+    clearPrediction();
   }
 };
 
@@ -585,11 +835,83 @@ searchForm.onsubmit = (e) => {
   const query = searchInput.value.trim();
   if (query) {
     saveSearch(query);
-    setTimeout(() => { searchInput.value = ""; }, 100);
+    setTimeout(() => { 
+      searchInput.value = ""; 
+      clearPrediction();
+    }, 100);
   }
 };
 
-searchInput.onfocus = () => { renderHistory(); searchHistory.style.display = "flex"; };
+const handleSearchInput = debounce(async () => {
+  const query = searchInput.value.trim();
+  if (query) {
+    const suggestions = await fetchSuggestions(query);
+    renderSuggestions(suggestions);
+    if (suggestions.length > 0) {
+      updatePrediction(searchInput.value, suggestions[0]);
+    } else {
+      clearPrediction();
+    }
+  } else {
+    clearPrediction();
+    renderDefaultDropdown();
+  }
+}, 150);
+
+searchInput.onfocus = () => {
+  const query = searchInput.value.trim();
+  if (query) {
+    handleSearchInput();
+  } else {
+    renderDefaultDropdown();
+  }
+  searchHistory.style.display = "flex";
+};
+
+searchInput.oninput = handleSearchInput;
+
+searchInput.addEventListener("keydown", (e) => {
+  if (e.key === "Tab" || e.key === "ArrowRight" || e.key === "End") {
+    if (searchInputPrediction && searchInputPrediction.value) {
+      const isCursorAtEnd = searchInput.selectionStart === searchInput.value.length;
+      if (e.key === "Tab" || isCursorAtEnd || e.key === "End") {
+        e.preventDefault();
+        searchInput.value = searchInputPrediction.value;
+        clearPrediction();
+        handleSearchInput();
+      }
+    }
+  }
+});
+
+if (historyToggleBtn) {
+  historyToggleBtn.onclick = (e) => {
+    e.stopPropagation();
+    openHistoryModal();
+  };
+}
+
+if (closeHistoryModalBtn) {
+  closeHistoryModalBtn.onclick = closeHistoryModal;
+}
+
+if (clearAllHistoryBtn) {
+  clearAllHistoryBtn.onclick = () => {
+    if (confirm("Are you sure you want to clear all search history?")) {
+      historyData = [];
+      localStorage.setItem("searchHistory", JSON.stringify(historyData));
+      renderHistoryModalList();
+      renderDefaultDropdown();
+    }
+  };
+}
+
+if (historySearchInput) {
+  historySearchInput.oninput = (e) => {
+    renderHistoryModalList(e.target.value.trim());
+  };
+}
+
 document.addEventListener("click", (e) => { 
   if (!e.target.closest(".search-container")) {
     searchHistory.style.display = "none"; 

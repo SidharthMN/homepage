@@ -265,6 +265,25 @@ async def list_wallpapers():
     finally:
         conn.close()
 
+
+@app.get("/suggestions/")
+async def get_suggestions(q: str = ""):
+    if not q:
+        return {"suggestions": []}
+    try:
+        import json
+        import urllib.parse
+        url = f"https://suggestqueries.google.com/complete/search?client=firefox&q={urllib.parse.quote(q)}"
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=3) as response:
+            data = json.loads(response.read().decode())
+            suggestions = data[1] if len(data) > 1 else []
+            return {"suggestions": suggestions}
+    except Exception as e:
+        print(f"Error fetching suggestions: {e}")
+        return {"suggestions": []}
+
+
 # Mount the frontend directory to serve the website statically (registered last)
 app.mount("/", StaticFiles(directory="../", html=True), name="frontend")
 

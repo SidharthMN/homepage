@@ -74,14 +74,24 @@
       <div class="search-container">
         <i class="fas fa-search search-icon"></i>
         <form id="search-form" action="https://www.google.com/search" method="get">
-          <input
-            type="text"
-            name="q"
-            class="search-input"
-            placeholder="Search Google..."
-            autocomplete="off"
-            id="search-input"
-          />
+          <div class="search-input-wrapper">
+            <input
+              type="text"
+              class="search-input-prediction"
+              id="search-input-prediction"
+              disabled
+              readonly
+              autocomplete="off"
+            />
+            <input
+              type="text"
+              name="q"
+              class="search-input"
+              placeholder="Search Google..."
+              autocomplete="off"
+              id="search-input"
+            />
+          </div>
         </form>
         <div class="engine-toggle-container">
           <div id="engine-toggle" class="engine-toggle" title="Switch Search Engine">
@@ -120,6 +130,24 @@
       </div>
     </div>
 
+    <!-- History Modal -->
+    <div id="history-modal" class="modal">
+      <div class="modal-content history-modal-content glass">
+        <h3>Search History</h3>
+        <div class="input-group" style="margin-bottom: 1rem;">
+          <label for="history-search-input">Search Queries</label>
+          <input type="text" id="history-search-input" placeholder="Filter history..." autocomplete="off" />
+        </div>
+        <div id="history-modal-list" class="history-modal-list">
+          <!-- History items rendered here -->
+        </div>
+        <div class="modal-actions">
+          <button id="clear-all-history" class="btn secondary" style="color: #ff4d4d; border-color: rgba(255, 77, 77, 0.3);">Clear All</button>
+          <button id="close-history-modal" class="btn primary">Close</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Theme Switcher -->
     <button id="theme-toggle-btn" class="theme-toggle-btn" title="Toggle Dark/Light Mode">
       <i class="fas fa-moon"></i>
@@ -130,6 +158,11 @@
       <i class="fas fa-image"></i>
     </button>
     <input type="file" id="wallpaper-upload" accept="image/*, video/*" style="display: none;" />
+
+    <!-- History Toggle Button -->
+    <button id="history-toggle-btn" class="history-toggle-btn" title="View Search History">
+      <i class="fas fa-history"></i>
+    </button>
 
     <script src="script.js"></script>
   </body>
