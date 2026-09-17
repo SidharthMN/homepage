@@ -189,8 +189,14 @@ body.light-mode .search-input-wrapper {
   color: var(--text-secondary);
 }
 
-.search-input, .search-input-prediction {
+.input-stack {
+  position: relative;
   flex: 1;
+  display: flex;
+}
+
+.search-input, .search-input-prediction {
+  width: 100%;
   padding: 1.2rem 1rem;
   font-size: 1.1rem;
   border: none;
