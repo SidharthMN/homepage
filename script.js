@@ -23,6 +23,12 @@ const searchHistory = document.getElementById("search-history");
 const editWallpaperBtn = document.getElementById("edit-wallpaper-btn");
 const wallpaperUpload = document.getElementById("wallpaper-upload");
 
+const appsGridBtn = document.getElementById("apps-grid-btn");
+const appsModal = document.getElementById("apps-modal");
+const customizeBtn = document.getElementById("customize-btn");
+const customizeDropdown = document.getElementById("customize-dropdown");
+const voiceSearchBtn = document.getElementById("voice-search-btn");
+
 const historyToggleBtn = document.getElementById("history-toggle-btn");
 const historyModal = document.getElementById("history-modal");
 const historySearchInput = document.getElementById("history-search-input");
@@ -110,6 +116,12 @@ function updateClock() {
   let hours = now.getHours();
   const minutes = String(now.getMinutes()).padStart(2, "0");
   const ampm = hours >= 12 ? "PM" : "AM";
+
+  let greeting = "Good evening";
+  if (hours >= 5 && hours < 12) greeting = "Good morning";
+  else if (hours >= 12 && hours < 17) greeting = "Good afternoon";
+  const greetingEl = document.getElementById("greeting");
+  if (greetingEl) greetingEl.textContent = greeting;
 
   hours = hours % 12;
   hours = hours ? hours : 12; // the hour '0' should be '12'
@@ -214,18 +226,22 @@ function renderShortcuts() {
   shortcuts.forEach((shortcut, index) => {
     const shortcutEl = document.createElement("div");
     shortcutEl.className = "shortcut";
-    let iconClass = shortcut.icon || "fas fa-link";
-    if (!shortcut.icon) {
-      if (shortcut.url.includes("google")) iconClass = "fab fa-google";
-      else if (shortcut.url.includes("youtube")) iconClass = "fab fa-youtube";
-      else if (shortcut.url.includes("github")) iconClass = "fab fa-github";
-      else if (shortcut.url.includes("reddit")) iconClass = "fab fa-reddit";
-      else if (shortcut.url.includes("twitter") || shortcut.url.includes("x.com")) iconClass = "fab fa-twitter";
+    
+    let iconContent = "";
+    if (shortcut.icon) {
+      iconContent = `<i class="${shortcut.icon}"></i>`;
+    } else {
+      try {
+        const domain = new URL(shortcut.url).hostname;
+        iconContent = `<img src="https://www.google.com/s2/favicons?domain=${domain}&sz=64" alt="${shortcut.name} icon" onerror="this.outerHTML='<i class=\\'fas fa-link\\'></i>'" />`;
+      } catch (e) {
+        iconContent = `<i class="fas fa-link"></i>`;
+      }
     }
 
     shortcutEl.innerHTML = `
       <a href="${shortcut.url}" class="shortcut-link">
-        <div class="shortcut-icon"><i class="${iconClass}"></i></div>
+        <div class="shortcut-icon">${iconContent}</div>
         <span class="shortcut-name">${shortcut.name}</span>
       </a>
       <div class="shortcut-delete" data-index="${index}"><i class="fas fa-times"></i></div>
@@ -761,7 +777,57 @@ saveBtn.onclick = addShortcut;
 window.onclick = (e) => { 
   if (e.target === modal) closeModal(); 
   if (e.target === historyModal) closeHistoryModal();
+  if (customizeDropdown && !e.target.closest('.customize-container')) {
+    customizeDropdown.style.display = "none";
+  }
+  if (appsModal && !e.target.closest('.top-right-controls')) {
+    appsModal.style.display = "none";
+  }
 };
+
+if (appsGridBtn) {
+  appsGridBtn.onclick = (e) => {
+    e.stopPropagation();
+    appsModal.style.display = appsModal.style.display === "block" ? "none" : "block";
+    if (customizeDropdown) customizeDropdown.style.display = "none";
+  };
+}
+
+if (customizeBtn) {
+  customizeBtn.onclick = (e) => {
+    e.stopPropagation();
+    customizeDropdown.style.display = customizeDropdown.style.display === "flex" ? "none" : "flex";
+    if (appsModal) appsModal.style.display = "none";
+  };
+}
+
+if (voiceSearchBtn) {
+  voiceSearchBtn.onclick = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      const recognition = new SpeechRecognition();
+      recognition.onstart = () => {
+        searchInput.placeholder = "Listening...";
+        voiceSearchBtn.style.color = "#ea4335";
+      };
+      recognition.onresult = (event) => {
+        searchInput.value = event.results[0][0].transcript;
+        searchForm.submit();
+      };
+      recognition.onerror = () => {
+        searchInput.placeholder = "Search Google...";
+        voiceSearchBtn.style.color = "";
+      };
+      recognition.onend = () => {
+        searchInput.placeholder = "Search Google...";
+        voiceSearchBtn.style.color = "";
+      };
+      recognition.start();
+    } else {
+      alert("Voice search is not supported in this browser.");
+    }
+  };
+}
 document.getElementById("get-location").onclick = (e) => { 
   e.stopPropagation(); 
   getWeather(true); 

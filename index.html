@@ -46,16 +46,22 @@
       </div>
     </div>
 
-    <div class="weather-widget glass fade-in">
-      <div id="get-location" class="location-btn" title="Detect Location">
-        <i class="fas fa-location-crosshairs"></i>
-      </div>
-      <i class="fas fa-cloud-sun fa-2x"></i>
-      <div class="weather-info">
-        <div class="temp">24°C</div>
-        <div class="location">London, UK</div>
+    <div class="top-right-controls fade-in">
+      <button id="apps-grid-btn" class="apps-grid-btn glass" title="Google Apps">
+        <i class="fas fa-th"></i>
+      </button>
+      <div class="weather-widget glass">
+        <div id="get-location" class="location-btn" title="Detect Location">
+          <i class="fas fa-location-crosshairs"></i>
+        </div>
+        <i class="fas fa-cloud-sun fa-2x"></i>
+        <div class="weather-info">
+          <div class="temp">24°C</div>
+          <div class="location">London, UK</div>
+        </div>
       </div>
     </div>
+
 
     <div id="login-overlay" class="login-overlay glass">
       <div class="login-box modal-content glass">
@@ -67,14 +73,15 @@
 
     <div id="main-content" class="container content-blur">
       <div class="clock-container fade-in">
+        <div id="greeting" class="greeting">Good morning</div>
         <div id="clock" class="clock">00:00</div>
         <div id="date" class="date">Monday, January 1</div>
       </div>
 
       <div class="search-container">
-        <i class="fas fa-search search-icon"></i>
         <form id="search-form" action="https://www.google.com/search" method="get">
           <div class="search-input-wrapper">
+            <i class="fas fa-search search-icon"></i>
             <input
               type="text"
               class="search-input-prediction"
@@ -91,14 +98,17 @@
               autocomplete="off"
               id="search-input"
             />
+            <div class="search-actions-right">
+              <i class="fas fa-microphone voice-search-icon" id="voice-search-btn" title="Search by voice"></i>
+              <div class="engine-toggle-container">
+                <div id="engine-toggle" class="engine-toggle" title="Switch Search Engine">
+                  <i class="fab fa-google"></i>
+                </div>
+                <div id="engine-dropdown" class="engine-dropdown"></div>
+              </div>
+            </div>
           </div>
         </form>
-        <div class="engine-toggle-container">
-          <div id="engine-toggle" class="engine-toggle" title="Switch Search Engine">
-            <i class="fab fa-google"></i>
-          </div>
-          <div id="engine-dropdown" class="engine-dropdown"></div>
-        </div>
         <div id="search-history" class="search-history-dropdown"></div>
       </div>
 
@@ -148,21 +158,37 @@
       </div>
     </div>
 
-    <!-- Theme Switcher -->
-    <button id="theme-toggle-btn" class="theme-toggle-btn" title="Toggle Dark/Light Mode">
-      <i class="fas fa-moon"></i>
-    </button>
+    <!-- Apps Modal -->
+    <div id="apps-modal" class="apps-modal glass">
+      <div class="apps-grid">
+        <a href="https://mail.google.com" class="app-item"><i class="fas fa-envelope"></i><span>Gmail</span></a>
+        <a href="https://drive.google.com" class="app-item"><i class="fab fa-google-drive"></i><span>Drive</span></a>
+        <a href="https://calendar.google.com" class="app-item"><i class="far fa-calendar-alt"></i><span>Calendar</span></a>
+        <a href="https://photos.google.com" class="app-item"><i class="fas fa-image"></i><span>Photos</span></a>
+        <a href="https://maps.google.com" class="app-item"><i class="fas fa-map-marked-alt"></i><span>Maps</span></a>
+        <a href="https://news.google.com" class="app-item"><i class="far fa-newspaper"></i><span>News</span></a>
+      </div>
+    </div>
 
-    <!-- Wallpaper Controls -->
-    <button id="edit-wallpaper-btn" class="edit-wallpaper-btn" title="Change Wallpaper">
-      <i class="fas fa-image"></i>
-    </button>
+    <!-- Customize Menu -->
+    <div class="customize-container">
+      <div id="customize-dropdown" class="customize-dropdown glass">
+        <button id="theme-toggle-btn" class="customize-option" title="Toggle Dark/Light Mode">
+          <i class="fas fa-moon"></i> Theme
+        </button>
+        <button id="edit-wallpaper-btn" class="customize-option" title="Change Wallpaper">
+          <i class="fas fa-image"></i> Wallpaper
+        </button>
+        <button id="history-toggle-btn" class="customize-option" title="View Search History">
+          <i class="fas fa-history"></i> History
+        </button>
+      </div>
+      <button id="customize-btn" class="customize-btn glass" title="Customize">
+        <i class="fas fa-pen"></i> Customize
+      </button>
+    </div>
+    
     <input type="file" id="wallpaper-upload" accept="image/*, video/*" style="display: none;" />
-
-    <!-- History Toggle Button -->
-    <button id="history-toggle-btn" class="history-toggle-btn" title="View Search History">
-      <i class="fas fa-history"></i>
-    </button>
 
     <script src="script.js"></script>
   </body>
