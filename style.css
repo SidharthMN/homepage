@@ -189,10 +189,12 @@ body.light-mode .search-input-wrapper {
   color: var(--text-secondary);
 }
 
-.input-stack {
-  position: relative;
+.input-overlap-wrapper {
   flex: 1;
+  position: relative;
   display: flex;
+  align-items: center;
+  height: 100%;
 }
 
 .search-input, .search-input-prediction {
@@ -220,6 +222,10 @@ body.light-mode .search-input-wrapper {
   opacity: 0.35;
   z-index: 1;
   pointer-events: none;
+  /* Match vertical padding and centering */
+  padding: 1.2rem 1rem;
+  display: flex;
+  align-items: center;
 }
 
 .search-actions-right {
